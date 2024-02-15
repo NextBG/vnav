@@ -1,0 +1,46 @@
+# Project
+project_name: "vnav"
+
+# Train
+seed: 0
+epochs: 10
+lr: 0.0001
+prob_mask: 0.5
+goal_norm_factor: 0.05
+batch_size: 100
+num_workers: 8
+max_traj_len: -1
+warmup_epochs: 4
+
+# Normalization
+action_stats:
+  x_max: 1.0
+  y_abs_max: 1.0
+
+# Eval
+num_diffusion_iters: 10
+
+# Dataset
+stride: 5
+min_goal_dist: 1
+max_goal_dist: 40
+step_distance: 0.10942
+cam_rot_th: 20 # large camera offset in yaw axis is discarded
+
+# Model
+pred_horizon: 8
+context_size: 3
+encoding_dim: 256
+image_size: [256, 144] # width, height, 16:9
+
+# Log
+vis_interval: 5
+use_wandb: True
+
+# Paths
+datasets_folder: /home/caoruixiang/datasets_mnt/vnav_datasets
+logs_folder: /home/caoruixiang/datasets_mnt/vnav_logs
+dataset_names: [nadawalk_tokyo]
+
+# Checkpoint
+# checkpoint: ""
