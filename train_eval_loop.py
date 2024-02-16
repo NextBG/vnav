@@ -236,31 +236,30 @@ def train_eval_loop_vnav(
                 if use_wandb:
                     wandb.log({"Evaluation/Diffusion loss": diffusion_loss.item()})
 
-                # Sample actions
-                sampled_actions = sample_actions(
-                    model=eval_model,
-                    noise_scheduler=noise_scheduler,
-                    n_obs_imgs=n_obs_imgs[0],
-                    n_goal_vec=n_goal_vec[0],
-                    goal_mask=goal_mask[0],
-                    num_samples=10,
-                    pred_horizon=len(n_deltas[0]),
-                    action_stats=action_stats,
-                    device=device,
-                )
+                    # Visualize
+                    if i % vis_interval == 0:
+                        # Sample actions
+                        sampled_actions = sample_actions(
+                            model=eval_model,
+                            noise_scheduler=noise_scheduler,
+                            n_obs_imgs=n_obs_imgs[0],
+                            n_goal_vec=n_goal_vec[0],
+                            goal_mask=goal_mask[0],
+                            num_samples=10,
+                            pred_horizon=len(n_deltas[0]),
+                            action_stats=action_stats,
+                            device=device,
+                        )
 
-                # Visualize
-                if i % vis_interval == 0:
-                    visualize(
-                        obs_imgs=obs_imgs[0],
-                        gt_actions=actions[0],
-                        gt_yaws=yaws[0],
-                        goal_vec=goal_vec[0],
-                        goal_mask=goal_mask[0],
-                        metadata=metadata[0],
-                        sampled_actions=sampled_actions,
-                        use_wandb=use_wandb,
-                    )
+                        visualize(
+                            obs_imgs=obs_imgs[0],
+                            gt_actions=actions[0],
+                            gt_yaws=yaws[0],
+                            goal_vec=goal_vec[0],
+                            goal_mask=goal_mask[0],
+                            metadata=metadata[0],
+                            sampled_actions=sampled_actions,
+                        )
 
         # Batch log
         batch_avg_loss = batch_total_loss / len(eval_dataloader)
@@ -323,7 +322,6 @@ def visualize(
         goal_mask: torch.Tensor,
         metadata: Dict[str, str],
         sampled_actions: torch.Tensor,
-        use_wandb: bool = False,
         ):
     '''
         Plot observations
@@ -353,12 +351,8 @@ def visualize(
         ax.imshow(obs_imgs[i]) 
 
     # Log
-    buf = io.BytesIO()
-    plt.savefig(buf, format='png')
+    wandb.log({"Evaluation/Observations": wandb.Image(fig)})
     plt.close(fig)
-    if use_wandb:
-        buf.seek(0)
-        wandb.log({"Evaluation/Observations": wandb.Image(Image.open(buf))})
 
     '''
         Plot last obs and trajectories (ROS convention)
@@ -413,12 +407,8 @@ def visualize(
     ) # GT yaws
 
     # Log
-    buf = io.BytesIO()
-    plt.savefig(buf, format='png')
+    wandb.log({"Evaluation/Actions": wandb.Image(fig)})
     plt.close(fig)
-    if use_wandb:
-        buf.seek(0)
-        wandb.log({"Evaluation/Actions": wandb.Image(Image.open(buf))})
 
 def normalize(data: torch.Tensor, stats: Tuple[torch.Tensor, torch.Tensor]) -> torch.Tensor:
     x_max, y_abs_max = stats

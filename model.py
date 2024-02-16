@@ -60,7 +60,7 @@ class VisionEncoder(nn.Module):
         self.goal_encoder = nn.Linear(2, self.enc_dim)
         
         # Self-attention
-        self.positional_encoding = PositionalEncoding(self.enc_dim, max_len=self.context_size+2)
+        self.positional_encoding = PositionalEncoding(self.enc_dim, max_len=self.context_size+1)
         self.sa_layer = nn.TransformerEncoderLayer(
             d_model=self.enc_dim,
             nhead=2,
@@ -69,19 +69,18 @@ class VisionEncoder(nn.Module):
             batch_first=True,
         )
         self.sa_encoder= nn.TransformerEncoder(self.sa_layer, num_layers=4)
-        self.sa_encoder_style = nn.TransformerEncoder(self.sa_layer, num_layers=2)
 
         # Goal mask
-        goal_unmasked = torch.zeros((1, self.context_size+2), dtype=torch.bool)
-        goal_masked = torch.zeros((1, self.context_size+2), dtype=torch.bool)
+        goal_unmasked = torch.zeros((1, self.context_size+1), dtype=torch.bool)
+        goal_masked = torch.zeros((1, self.context_size+1), dtype=torch.bool)
         goal_masked[0, -1] = 1.0
         self.goal_masks = torch.cat([goal_unmasked, goal_masked], dim=0)
 
         # Mean pool mask
-        avg_unmasked = torch.ones((1, self.context_size+2), dtype=torch.float32)
-        avg_masked = torch.ones((1, self.context_size+2), dtype=torch.float32)
+        avg_unmasked = torch.ones((1, self.context_size+1), dtype=torch.float32)
+        avg_masked = torch.ones((1, self.context_size+1), dtype=torch.float32)
         avg_masked[0, -1] = 0.0
-        avg_masked = avg_masked * ((self.context_size+2)/(self.context_size))
+        avg_masked = avg_masked * ((self.context_size+1)/(self.context_size))
         self.avg_masks = torch.cat([avg_unmasked, avg_masked], dim=0)
 
     def forward(self, 
@@ -97,7 +96,7 @@ class VisionEncoder(nn.Module):
         
         # Encode goal vector
         goal_enc = self.goal_encoder(goal_vec)                                  # [B, 3] -> [B, E]
-        goal_enc = goal_enc.unsqueeze(1)                                        # [B, 1, E]
+        goal_enc = goal_enc.unsqueeze(1)
 
         # Encode observations
         obs_imgs = obs_imgs.view(-1, 3, obs_imgs.shape[3], obs_imgs.shape[4])   # [B, N, C, H, W] -> [B*N, C, H, W]
@@ -107,24 +106,16 @@ class VisionEncoder(nn.Module):
         obs_enc = self.compress_obs_enc(obs_enc)                                # [B*N, E]
         obs_enc = obs_enc.view((BS, self.context_size, self.enc_dim))           # [B, N, E]
 
-        # Style encoding
-        cls = torch.zeros((BS, 1, self.enc_dim), device=device)                 # [B, 1, E]
-        style_enc = torch.cat([cls, obs_enc], dim=1)                            # [B, N+1, E]
-        style_enc = self.positional_encoding(style_enc)                         # [B, N+1, E]
-        style_enc = self.sa_encoder_style(style_enc)                            # [B, N+1, E]
-        style_enc = style_enc[:, 0, :]                                          # [B, E]
-        style_enc = style_enc.unsqueeze(1)                                      # [B, 1, E]
-
         # Context encoding
-        context_enc = torch.cat([style_enc, obs_enc, goal_enc], dim=1)          # [B, N+2, E]
-        context_enc = self.positional_encoding(context_enc)                     # [B, N+2, E]
+        context_enc = torch.cat([obs_enc, goal_enc], dim=1)                     # [B, N+1, E]
+        context_enc = self.positional_encoding(context_enc)                     # [B, N+1, E]
 
-        mask = torch.index_select(self.goal_masks.to(device), 0, goal_mask)     # [B, N+2]
-        context_token = self.sa_encoder(context_enc, src_key_padding_mask=mask) # [B, N+2, E]
+        mask = torch.index_select(self.goal_masks.to(device), 0, goal_mask)     # [B, N+1]
+        context_token = self.sa_encoder(context_enc, src_key_padding_mask=mask) # [B, N+1, E]
 
         # Mean pool
-        avg_mask = torch.index_select(self.avg_masks.to(device), 0, goal_mask)  # [B, N+2]
-        context_token = context_token * avg_mask.unsqueeze(2)                   # [B, N+2, E]
+        avg_mask = torch.index_select(self.avg_masks.to(device), 0, goal_mask)  # [B, N+1]
+        context_token = context_token * avg_mask.unsqueeze(2)                   # [B, N+1, E]
         context_token = torch.mean(context_token, dim=1)                        # [B, E]
 
         return context_token
