@@ -26,7 +26,6 @@ step_distance: 0.11
 cam_rot_th: 20 # large camera offset in yaw axis is discarded
 goal_rot_th: 20 # small goal offset in yaw axis is discarded
 
-
 # Model
 pred_horizon: 8
 context_size: 3
@@ -43,4 +42,4 @@ logs_folder: /home/caoruixiang/datasets_mnt/vnav_logs
 dataset_names: [nadawalk_tokyo]
 
 # Checkpoint
-checkpoint: "vnav-240216-201119"
+# checkpoint: "vnav-240216-201119"
