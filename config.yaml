@@ -4,13 +4,12 @@ project_name: "vnav"
 # Train
 seed: 0
 epochs: 10
-lr: 0.0001
+lr: 0.00001
 prob_mask: 0.5
-goal_norm_factor: 0.05
+goal_norm_factor: 0.04 # tanh(1)=0.76 tanh(2)=0.96 tanh(3)=0.99
 batch_size: 100
 num_workers: 8
 max_traj_len: -1
-warmup_epochs: 4
 
 # Normalization
 action_stats:
@@ -22,10 +21,11 @@ num_diffusion_iters: 10
 
 # Dataset
 stride: 5
-min_goal_dist: 1
-max_goal_dist: 40
-step_distance: 0.10942
+max_goal_dist: 50
+step_distance: 0.11
 cam_rot_th: 20 # large camera offset in yaw axis is discarded
+goal_rot_th: 20 # small goal offset in yaw axis is discarded
+
 
 # Model
 pred_horizon: 8
@@ -43,4 +43,4 @@ logs_folder: /home/caoruixiang/datasets_mnt/vnav_logs
 dataset_names: [nadawalk_tokyo]
 
 # Checkpoint
-# checkpoint: ""
+checkpoint: "vnav-240216-201119"

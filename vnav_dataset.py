@@ -3,6 +3,7 @@ import os
 import lmdb
 import pickle
 import numpy as np
+from tqdm import tqdm
 from PIL import Image
 from typing import Tuple
 
@@ -30,10 +31,10 @@ class VnavDataset(Dataset):
         self.stride = config["stride"]
         self.pred_horizon = config["pred_horizon"]
         self.context_size = config["context_size"]
-        self.min_goal_dist = config["min_goal_dist"]
         self.max_goal_dist = config["max_goal_dist"]
         self.max_traj_len = config["max_traj_len"]
         self.cam_rot_th = config["cam_rot_th"]
+        self.goal_rot_th = config["goal_rot_th"]
         self.step_dist = config["step_distance"]
 
         # Build index
@@ -49,7 +50,7 @@ class VnavDataset(Dataset):
     def _build_index(self):
         samples_index = []
         traj_len_to_use = min(self.max_traj_len, len(self.traj_names))
-        for traj_name in self.traj_names[:traj_len_to_use]:
+        for traj_name in tqdm(self.traj_names[:traj_len_to_use]):
             traj_data = self._get_trajectory(traj_name)
             # Skip if doesn't exist
             if traj_data is None:
@@ -59,7 +60,7 @@ class VnavDataset(Dataset):
             traj_len = len(traj_data["positions"])
 
             begin_time = self.context_size * self.stride
-            end_time = traj_len - max(self.pred_horizon, self.min_goal_dist) * self.stride
+            end_time = traj_len - self.pred_horizon * self.stride
 
             for curr_time in range(begin_time, end_time):
                 # Yaw at T=0
@@ -77,35 +78,29 @@ class VnavDataset(Dataset):
 
                 # min and max goal distance
                 max_goal_dist = min(self.max_goal_dist * self.stride, traj_len - curr_time - 1)
-                min_goal_dist = self.min_goal_dist * self.stride
-                min_goal_dist_strided = min_goal_dist // self.stride
-                max_goal_dist_strided = (max_goal_dist+1) // self.stride
+                max_goal_dist = (max_goal_dist+1) // self.stride
 
-                # Add to index
-                samples_index.append((traj_name, curr_time, min_goal_dist_strided, max_goal_dist_strided))
+                # Sample goal
+                for _ in range(3):
+                    # Sample goal
+                    goal_offset = np.random.randint(1, max_goal_dist+1)
+                    goal_time = curr_time + goal_offset * self.stride
+
+                    # Check yaw offset
+                    goal_pos = traj_data["positions"][min(goal_time, len(traj_data["positions"]) - 1)]
+                    goal_vec = self._to_local_coords(goal_pos, pos_t0, yaw_t0)
+                    goal_rot_deg = np.arctan2(goal_vec[1], goal_vec[0]) * 180 / np.pi
+
+                    # Large yaw offset
+                    if np.abs(goal_rot_deg) > self.goal_rot_th:
+                        break
+                
+                if np.abs(goal_rot_deg) > self.goal_rot_th:
+                    # Add to index
+                    samples_index.append((traj_name, curr_time, goal_time))
 
         return samples_index
-    
-    def _sample_goal(self, curr_time, min_goal_dist, max_goal_dist):
-            # Sample goal
-            if min_goal_dist == max_goal_dist:
-                goal_offset = min_goal_dist
-            else:
-                # # Linear sampling
-                # numbers = np.arange(min_goal_dist, max_goal_dist+1)
-                # weights = np.linspace(0, 1, num=len(numbers))
-                # probs = weights / np.sum(weights)
 
-                # # Sample
-                # goal_offset = np.random.choice(numbers, p=probs)
-
-                # Uniform sampling
-                goal_offset = np.random.randint(min_goal_dist, max_goal_dist+1)
-
-            # Goal time
-            goal_time = curr_time + goal_offset * self.stride
-
-            return goal_time
 
     def _load_image(self, traj_name, time):
         # Open cache
@@ -188,7 +183,7 @@ class VnavDataset(Dataset):
 
     def __getitem__(self, i: int) -> Tuple[torch.Tensor]:
         # Index to data
-        current_file, curr_time, min_goal_dist, max_goal_dist = self.index_to_data[i]
+        current_file, curr_time, goal_time = self.index_to_data[i]
 
         # Context images
         context_times = list(
@@ -204,7 +199,6 @@ class VnavDataset(Dataset):
 
         # Actions, yaws, goal vector
         curr_traj_data = self._get_trajectory(current_file)
-        goal_time = self._sample_goal(curr_time, min_goal_dist, max_goal_dist)
         actions, yaws, goal_vec = self._compute_actions(curr_traj_data, curr_time, goal_time)
 
         # Metadata
@@ -263,7 +257,6 @@ if __name__ == "__main__":
             "stride": 5,
             "pred_horizon": 8,
             "context_size": 3,
-            "min_goal_dist": 1,
             "max_goal_dist": 20,
             "max_traj_len": -1,
             "cam_rot_th": 26.565051177,

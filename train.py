@@ -11,7 +11,6 @@ import torch
 from torch.optim import AdamW
 from torch.utils.data import DataLoader, ConcatDataset
 
-from warmup_scheduler import GradualWarmupScheduler
 from diffusers.schedulers.scheduling_ddpm import DDPMScheduler
 
 # Custiom imports
@@ -122,15 +121,7 @@ def main(config):
     # Scheduler
     lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
         optimizer, 
-        T_max=config["epochs"]-config["warmup_epochs"],
-    )
-
-    # Warmup Scheduler
-    lr_scheduler = GradualWarmupScheduler(
-        optimizer,
-        multiplier=1,
-        total_epoch=config["warmup_epochs"],
-        after_scheduler=lr_scheduler
+        T_max=config["epochs"],
     )
 
     # Load checkpoint
@@ -190,7 +181,7 @@ if __name__ == "__main__":
     # Log folder
     config["run_name"] = "vnav-" + time.strftime("%y%m%d-%H%M%S")
     config["log_folder"] = os.path.join(config["logs_folder"], config["run_name"])
-    os.makedirs(os.path.join(config["log_folder"], config["run_name"]))
+    os.makedirs(config["log_folder"], exist_ok=True)
 
     # Start
     print(f"Start at {time.strftime('%Y-%m-%d %H:%M:%S')}")

@@ -99,7 +99,10 @@ def train_eval_loop_vnav(
             n_obs_imgs = img_tf(obs_imgs)
 
             # Normalize goal
-            n_goal_vec = torch.tanh(goal_vec * goal_norm_factor)
+            dists = torch.norm(goal_vec, dim=1)             # [B]
+            n_dists = torch.tanh(dists * goal_norm_factor)  # [B]
+            n_coeff = (n_dists/dists).unsqueeze(1)          # [B, 1]
+            n_goal_vec = goal_vec * n_coeff                 # [B, 2]
 
             # Goal mask
             goal_mask = (torch.rand((BS, ), device=device) < prob_mask).int()
@@ -191,7 +194,10 @@ def train_eval_loop_vnav(
                 n_obs_imgs = img_tf(obs_imgs)
 
                 # Normalize goal
-                n_goal_vec = torch.tanh(goal_vec * goal_norm_factor)
+                dists = torch.norm(goal_vec, dim=1)             # [B]
+                n_dists = torch.tanh(dists * goal_norm_factor)  # [B]
+                n_coeff = (n_dists/dists).unsqueeze(1)          # [B, 1]
+                n_goal_vec = goal_vec * n_coeff                 # [B, 2]
 
                 # Normalize action
                 pad_actions = F.pad(actions, (0, 0, 1, 0), mode="constant", value=0)    # [B, H, 2] -> [B, H+1, 2]
