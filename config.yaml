@@ -3,10 +3,10 @@ project_name: "vnav"
 
 # Train
 seed: 0
-epochs: 10
+epochs: 15
 lr: 0.00001
 prob_mask: 0.5
-goal_norm_factor: 0.04 # tanh(1)=0.76 tanh(2)=0.96 tanh(3)=0.99
+goal_norm_factor: 0.07 # tanh(1)=0.76 tanh(2)=0.96 tanh(3)=0.99
 batch_size: 100
 num_workers: 8
 max_traj_len: -1
@@ -20,11 +20,11 @@ action_stats:
 num_diffusion_iters: 10
 
 # Dataset
-stride: 5
-max_goal_dist: 50
-step_distance: 0.11
+stride: 10
+max_goal_dist: 20
+step_distance: 1.1 # After stride, the distance between two consecutive frames
 cam_rot_th: 20 # large camera offset in yaw axis is discarded
-goal_rot_th: 20 # small goal offset in yaw axis is discarded
+goal_rot_th: 10 # small goal offset in yaw axis is discarded
 
 # Model
 pred_horizon: 8
@@ -39,7 +39,7 @@ use_wandb: True
 # Paths
 datasets_folder: /home/caoruixiang/datasets_mnt/vnav_datasets
 logs_folder: /home/caoruixiang/datasets_mnt/vnav_logs
-dataset_names: [nadawalk_tokyo]
+dataset_names: [scalenet, nadawalk_tokyo, tokyotownwalk_shinjukupark]
 
 # Checkpoint
-# checkpoint: "vnav-240216-201119"
+# checkpoint: "vnav-240216-223047"

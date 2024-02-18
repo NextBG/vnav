@@ -19,7 +19,6 @@ import torch.nn.functional as F
 from torchvision import transforms
 from torch.utils.data import DataLoader
 
-from diffusers.training_utils import EMAModel
 from diffusers.schedulers.scheduling_ddpm import DDPMScheduler
 
 def train_eval_loop_vnav(
@@ -39,9 +38,6 @@ def train_eval_loop_vnav(
     use_wandb: bool,
     device: torch.device,
 ):
-    # EMA(Exponential Moving Average)
-    ema_model = EMAModel(model=model, power=0.75)
-
     # Normalize
     img_tf = transforms.Compose([
         transforms.Normalize(mean=[0.485, 0.456, 0.406],
@@ -132,9 +128,6 @@ def train_eval_loop_vnav(
             diffusion_loss.backward()
             optimizer.step()
 
-            # Update EMA
-            ema_model.step(model)
-
             # log
             if use_wandb:
                 wandb.log({"Train/Diffusion loss": diffusion_loss.item()})
@@ -150,12 +143,10 @@ def train_eval_loop_vnav(
         lr_scheduler.step()
 
         # Save paths
-        ema_numbered_path = os.path.join(log_folder, f"ema_{epoch}.pth")
         numbered_path = os.path.join(log_folder, f"{epoch}.pth")
         latest_path = os.path.join(log_folder, f"latest.pth")
         
         # Save
-        torch.save(ema_model.averaged_model.state_dict(), ema_numbered_path)
         torch.save(model.state_dict(), numbered_path)
         torch.save(model.state_dict(), latest_path)
 
@@ -168,8 +159,7 @@ def train_eval_loop_vnav(
             Evaluation
         '''
         # Init
-        eval_model = ema_model.averaged_model
-        eval_model.eval()
+        model.eval()
 
         # Log
         batch_total_loss = 0.0
@@ -213,7 +203,7 @@ def train_eval_loop_vnav(
                 goal_mask = (torch.rand((BS, ), device=device) < prob_mask).int()
 
                 # Encode context
-                context_token = eval_model(
+                context_token = model(
                     "vision_encoder", 
                     obs_imgs=n_obs_imgs,
                     goal_vec=n_goal_vec,
@@ -221,7 +211,7 @@ def train_eval_loop_vnav(
                 )
                 
                 # Predict noise
-                noise_pred = eval_model(
+                noise_pred = model(
                     "noise_predictor", 
                     sample=noisy_deltas, 
                     timestep=timesteps, 
@@ -240,7 +230,7 @@ def train_eval_loop_vnav(
                     if i % vis_interval == 0:
                         # Sample actions
                         sampled_actions = sample_actions(
-                            model=eval_model,
+                            model=model,
                             noise_scheduler=noise_scheduler,
                             n_obs_imgs=n_obs_imgs[0],
                             n_goal_vec=n_goal_vec[0],
@@ -332,7 +322,7 @@ def visualize(
     dataset_name, traj_name, traj_idx, timestep = metadata.values()
 
     # Init figure
-    fig = plt.figure(figsize=(10 * context_size, 10))
+    fig = plt.figure(figsize=(10 * (context_size-1), 10))
     fig.suptitle(f"Dataset: {dataset_name}, Trajectory: {traj_name}_{traj_idx}, Timestep: {timestep}")
 
     # Detach
@@ -345,8 +335,8 @@ def visualize(
 
     # Plot observations
     obs_imgs = np.transpose(obs_imgs, (0, 2, 3, 1)) # [N, 3, H, W] -> [N, H, W, 3]
-    for i in range(context_size):
-        ax = fig.add_subplot(1, context_size, i+1)
+    for i in range(context_size-1):
+        ax = fig.add_subplot(1, context_size-1, i+1)
         ax.set_title(f"Observation T-{context_size-1-i}")
         ax.imshow(obs_imgs[i]) 
 

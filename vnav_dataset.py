@@ -156,7 +156,7 @@ class VnavDataset(Dataset):
         yaws = yaws - yaws[0]
 
         # Scale waypoints
-        scale = self._get_norm_scale(waypoints, self.step_dist * self.stride)
+        scale = self._get_norm_scale(waypoints, self.step_dist)
         waypoints *= scale
         goal_pos *= scale
 
