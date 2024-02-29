@@ -61,7 +61,9 @@ def main(config):
                 train_datasets.append(dataset)
             # Test datasets
             elif dataset_type == "eval":
-                eval_datasets.append(dataset)
+                # Only add the first eval dataset
+                if len(eval_datasets) == 0:
+                    eval_datasets.append(dataset)
 
     # Train dataloader
     train_dataset = ConcatDataset(train_datasets)

@@ -3,7 +3,7 @@ project_name: "vnav"
 
 # Train
 seed: 0
-epochs: 15
+epochs: 20
 lr: 0.00001
 prob_mask: 0.5
 goal_norm_factor: 0.07 # tanh(1)=0.76 tanh(2)=0.96 tanh(3)=0.99
@@ -39,7 +39,7 @@ use_wandb: True
 # Paths
 datasets_folder: /home/caoruixiang/datasets_mnt/vnav_datasets
 logs_folder: /home/caoruixiang/datasets_mnt/vnav_logs
-dataset_names: [scalenet, nadawalk_tokyo, tokyotownwalk_shinjukupark]
+dataset_names: [scalenet]
 
 # Checkpoint
-# checkpoint: "vnav-240216-223047"
+# checkpoint: ""

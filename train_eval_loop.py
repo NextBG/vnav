@@ -333,16 +333,16 @@ def visualize(
     goal_vec = goal_vec.detach().cpu().numpy()                  # [2]
     goal_mask = goal_mask.detach().cpu().numpy()                # [1]
 
-    # Plot observations
+    # # Plot observations
     obs_imgs = np.transpose(obs_imgs, (0, 2, 3, 1)) # [N, 3, H, W] -> [N, H, W, 3]
-    for i in range(context_size-1):
-        ax = fig.add_subplot(1, context_size-1, i+1)
-        ax.set_title(f"Observation T-{context_size-1-i}")
-        ax.imshow(obs_imgs[i]) 
+    # for i in range(context_size-1):
+    #     ax = fig.add_subplot(1, context_size-1, i+1)
+    #     ax.set_title(f"Observation T-{context_size-1-i}")
+    #     ax.imshow(obs_imgs[i]) 
 
-    # Log
-    wandb.log({"Evaluation/Observations": wandb.Image(fig)})
-    plt.close(fig)
+    # # Log
+    # wandb.log({"Evaluation/Observations": wandb.Image(fig)})
+    # plt.close(fig)
 
     '''
         Plot last obs and trajectories (ROS convention)
@@ -372,7 +372,8 @@ def visualize(
     for i in range(sampled_actions.shape[0]):
         x = sampled_actions[i, :, 0]
         y = sampled_actions[i, :, 1]
-        ax.plot(-y, x, "r-o", alpha=0.1, markersize=3)
+        ax.plot(-y, x, "r-", alpha=0.4, linewidth=2.0)
+        ax.plot(-y, x, "ro", alpha=0.4, markersize=4)
 
     # Ground truth
     gt_x = gt_actions[:, 0]
@@ -381,9 +382,22 @@ def visualize(
 
     # Goal
     if goal_mask == 0:
-        ax.plot(-goal_vec[1], goal_vec[0], "bx", markersize=10)
+        ax.plot(-goal_vec[1], goal_vec[0], "gx", markersize=0.01)
     else:
-        ax.plot(-goal_vec[1], goal_vec[0], "bo", markersize=10)
+        ax.plot(-goal_vec[1], goal_vec[0], "bo", markersize=30)
+        # ax.quiver(0, 
+        #           0, 
+        #           -goal_vec[1], 
+        #           goal_vec[0], 
+        #           angles='xy', 
+        #           scale_units='xy', 
+        #           scale=1,
+        #           color='g',
+        #           alpha=0.5,
+        #           width=0.01,
+        #           headwidth=6,
+        #           label="Goal vector"
+        #           )
 
     # Yaw
     ax.quiver(
